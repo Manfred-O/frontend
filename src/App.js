@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate  } from 'react-router-dom';
 import './App.css';
+import MqttClientPage from './components/MqttClientPage';
 
 function App() {
   const [message, setMessage] = useState('');
@@ -103,7 +105,6 @@ function App() {
         <button type="submit">Login</button>
         <button type="button" onClick={() => setIsLogin(false)}>Register</button>
       </form>
-
     </div>
   );
 
@@ -132,19 +133,6 @@ function App() {
     </form>
   );
 
-  const renderGreetingPage = () => (
-    <div className="greeting-page">
-      <h2>Welcome, {username}!</h2>
-      <p>You have successfully logged in.</p>
-      <button onClick={() => {
-        setLoggedIn(false);
-        setUsername('');
-        setEmail('');
-        setPassword('');
-      }}>Logout</button>
-    </div>
-  );
-
   const renderUserList = () => (
     <div>
       <h2>Registered Users:</h2>
@@ -162,20 +150,34 @@ function App() {
     </div>
   );
 
+  const handleLogout = () => {
+    setLoggedIn(false);
+    setUsername('');
+    setEmail('');
+    setPassword('');
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>{message}</h1>
-        {loggedIn ? (
-          renderGreetingPage()
-        ) : (
-          <>
-            {isLogin ? renderLoginForm() : renderRegisterForm()}
-            {renderUserList()}
-          </>
-        )}
-      </header>
-    </div>
+    <Router>
+      <div className="App">
+        <header className="App-header">
+          <h1>{message}</h1>
+          <Routes>
+            <Route path="/" element={
+              loggedIn ? <Navigate to="/mqtt" /> : (
+                <>
+                  {isLogin ? renderLoginForm() : renderRegisterForm()}
+                  {renderUserList()}
+                </>
+              )
+            } />
+            <Route path="/mqtt" element={
+              loggedIn ? <MqttClientPage onLogout={handleLogout} /> : <Navigate to="/" />
+            } />
+          </Routes>
+        </header>
+      </div>
+    </Router>
   );
 }
 
