@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate  } from 'react-router-dom';
 import './App.css';
-import MqttClientPage from './components/MqttClientPage';
+import {MqttClientPage, triggerMqttDisconnect   } from './components/MqttClientPage';
 
 function App() {
   const [message, setMessage] = useState('');
@@ -12,6 +12,8 @@ function App() {
   const [isLogin, setIsLogin] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [mqttClient, setMqttClient] = useState(false);
+  const [mqttStatus, setMqttStatus] = useState('Disconnected');
 
   useEffect(() => {
     fetch('http://localhost:5000/api/hello')
@@ -135,7 +137,7 @@ function App() {
 
   const renderUserList = () => (
     <div>
-      <h2>Registered Users:</h2>
+      <h2 style={{ fontWeight: 'bold', fontSize: '32px' }}>Registered Users:</h2>
       {isLoading ? (
         <p>Loading users...</p>
       ) : registeredUsers.length > 0 ? (
@@ -151,6 +153,7 @@ function App() {
   );
 
   const handleLogout = () => {
+    triggerMqttDisconnect(); // This will disconnect MQTT if connected
     setLoggedIn(false);
     setUsername('');
     setEmail('');
@@ -160,12 +163,20 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <header className="App-header">
-          <h1>{message}</h1>
+        <div className="header">
+          <h1 style={{ fontWeight: 'bold', fontSize: '24px' }}>{loggedIn ? `Welcome, ${username}` :  `${message}` }</h1>
+        {loggedIn && (
+          <button className="logout-button" onClick={handleLogout}>
+          <i class="fa fa-sign-out" style={{ fontSize: '24px', color: 'white'}}>
+          </i></button>
+        )}
+        </div> 
+        <div className="main">
           <Routes>
             <Route path="/" element={
               loggedIn ? <Navigate to="/mqtt" /> : (
                 <>
+                  <h1 style={{ fontWeight: 'bold', fontSize: '32px' }}>Please login or register</h1>
                   {isLogin ? renderLoginForm() : renderRegisterForm()}
                   {renderUserList()}
                 </>
@@ -175,8 +186,11 @@ function App() {
               loggedIn ? <MqttClientPage onLogout={handleLogout} /> : <Navigate to="/" />
             } />
           </Routes>
-        </header>
+        </div>
+      <div className='footer'>
+        <p>© 2025 My Fullstack App</p>
       </div>
+    </div>
     </Router>
   );
 }
