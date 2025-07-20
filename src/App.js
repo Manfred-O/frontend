@@ -12,8 +12,6 @@ function App() {
   const [isLogin, setIsLogin] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [mqttClient, setMqttClient] = useState(false);
-  const [mqttStatus, setMqttStatus] = useState('Disconnected');
 
   useEffect(() => {
     fetch('http://localhost:5000/api/hello')
