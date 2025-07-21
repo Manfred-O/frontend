@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate  } from 'react-router-dom';
 import './App.css';
 import {MqttClientPage, triggerMqttDisconnect   } from './components/MqttClientPage';
+import {WebsocketClientPage, triggerWebsocketDisconnect } from './components/WebsocketClientPage';
 
 function App() {
   const [message, setMessage] = useState('');
@@ -151,7 +152,8 @@ function App() {
   );
 
   const handleLogout = () => {
-    triggerMqttDisconnect(); // This will disconnect MQTT if connected
+    //triggerMqttDisconnect(); // This will disconnect MQTT if connected
+    triggerWebsocketDisconnect(); // This will disconnect WebSocket if connected
     setLoggedIn(false);
     setUsername('');
     setEmail('');
@@ -181,7 +183,7 @@ function App() {
               )
             } />
             <Route path="/mqtt" element={
-              loggedIn ? <MqttClientPage onLogout={handleLogout} /> : <Navigate to="/" />
+              loggedIn ? <WebsocketClientPage onLogout={handleLogout} /> : <Navigate to="/" />
             } />
           </Routes>
         </div>
