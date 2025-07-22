@@ -104,10 +104,37 @@ li {
   cursor: pointer;
 }
 
+.register-button {
+  background-color: red;
+  cursor: pointer;
+}
+
+.login-button {
+  background-color: red;
+  cursor: pointer;
+}
+
 .greeting-page button:hover {
   background-color: #d32f2f;
 }
 
 .logout-button:hover {
+  background-color: #d32f2f;
+}
+
+.register-button:hover {
+  background-color: #d32f2f;
+}
+
+.login-button:hover {
+  background-color: #d32f2f;
+}
+
+.toggle-button {
+  background-color: red;
+  cursor: pointer;
+}
+
+.toggle-button:hover {
   background-color: #d32f2f;
 }

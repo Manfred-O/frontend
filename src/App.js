@@ -10,16 +10,20 @@ function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [registeredUsers, setRegisteredUsers] = useState([]);
+  const [registeredServers, setRegisteredServers] = useState([]);
   const [isLogin, setIsLogin] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [toggling, setToggling] = useState(true);
+   const [image, setImage] = useState(true);
+  const [activeForm, setActiveForm] = useState(''); // New state to track active form
 
   useEffect(() => {
     fetch('http://localhost:5000/api/hello')
       .then(response => response.json())
       .then(data => setMessage(data.message))
       .catch(error => console.error('Error:', error));
-
+    fetchServers();
     fetchUsers();
   }, []);
 
@@ -35,6 +39,35 @@ function App() {
         console.error('Error fetching users:', error);
         setIsLoading(false);
       });
+  };
+
+  const fetchServers = () => {
+    fetch('http://localhost:5000/api/servers')
+      .then(response => response.json())
+      .then(data => {
+        setRegisteredServers(data);
+      })
+      .catch(error => {
+        console.error('Error fetching servers:', error);
+      });
+  };
+
+  const getImage = () => {
+    fetch('http://localhost:5000/api/image')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+      })
+      .then(data => { 
+        console.log('Image fetched successfully');
+        setImage( data);
+        return data.blob();
+      }
+      )
+      .catch(error => {
+        console.error('Error fetching image:', error);
+      }); 
   };
 
   const handleLogin = (e) => {
@@ -88,6 +121,21 @@ function App() {
     }
   };
 
+  const renderActiveForm = () => {
+    switch(activeForm) {
+      case 'login':
+        return renderLoginForm();
+      case 'register':
+        return renderRegisterForm();
+      default:
+        return (
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <img src={getImage()} style={{ width: '200px', height: 'auto' }} />
+        </div>
+      );
+    }
+  };
+
   const renderLoginForm = () => (
     <div>
       <form onSubmit={handleLogin}>
@@ -104,7 +152,6 @@ function App() {
           onChange={(e) => setPassword(e.target.value)}
         />
         <button type="submit">Login</button>
-        <button type="button" onClick={() => setIsLogin(false)}>Register</button>
       </form>
     </div>
   );
@@ -130,19 +177,35 @@ function App() {
         onChange={(e) => setPassword(e.target.value)}
       />
       <button type="submit">Register</button>
-      <button type="button" onClick={() => setIsLogin(true)}>Back to Login</button>
     </form>
+  );
+
+  const renderServerList = () => (
+    <div>
+      <h2 style={{ fontWeight: 'bold', fontSize: '16px' }}>Registered Servers:</h2>
+      {isLoading ? (
+        <p>Loading servers...</p>
+      ) : registeredServers.length > 0 ? (
+        <ul>
+          {registeredServers.map((user, index) => (
+            <li style={{fontSize: '16px'}} key={index}>{user.name} - {user.host}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No servers found.</p>
+      )}
+    </div>
   );
 
   const renderUserList = () => (
     <div>
-      <h2 style={{ fontWeight: 'bold', fontSize: '32px' }}>Registered Users:</h2>
+      <h2 style={{ fontWeight: 'bold', fontSize: '16px' }}>Registered Users:</h2>
       {isLoading ? (
         <p>Loading users...</p>
       ) : registeredUsers.length > 0 ? (
         <ul>
           {registeredUsers.map((user, index) => (
-            <li key={index}>{user.username} - {user.email}</li>
+            <li style={{fontSize: '16px'}} key={index}>{user.username} - {user.email}</li>
           ))}
         </ul>
       ) : (
@@ -152,8 +215,8 @@ function App() {
   );
 
   const handleLogout = () => {
-    //triggerMqttDisconnect(); // This will disconnect MQTT if connected
-    triggerWebsocketDisconnect(); // This will disconnect WebSocket if connected
+    triggerMqttDisconnect(); // This will disconnect Mqtt if connected
+    triggerWebsocketDisconnect(); // This will disconnect Websocket if connected
     setLoggedIn(false);
     setUsername('');
     setEmail('');
@@ -165,25 +228,42 @@ function App() {
       <div className="App">
         <div className="header">
           <h1 style={{ fontWeight: 'bold', fontSize: '24px' }}>{loggedIn ? `Welcome, ${username}` :  `${message}` }</h1>
-        {loggedIn && (
-          <button className="logout-button" onClick={handleLogout}>
-          <i class="fa fa-sign-out" style={{ fontSize: '24px', color: 'white'}}>
-          </i></button>
-        )}
+          {loggedIn ? (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="toggle-button" onClick={() => setToggling(!toggling)}>
+              <i class={`fa ${toggling ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: '24px', color: 'white'}}>
+              </i></button>
+              <button className="logout-button" onClick={handleLogout}>
+              <i class="fa fa-sign-out" style={{ fontSize: '24px', color: 'white'}}>
+              </i></button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="register-button" onClick={() => setActiveForm('register')}>
+              <i class="fa fa-registered" style={{ fontSize: '24px', color: 'white'}}>
+              </i></button>
+              <button className="login-button" onClick={() => setActiveForm('login')}>
+              <i class="fa fa-sign-in" style={{ fontSize: '24px', color: 'white'}}>
+              </i></button>
+            </div>
+          )}
         </div> 
         <div className="main">
           <Routes>
             <Route path="/" element={
               loggedIn ? <Navigate to="/mqtt" /> : (
                 <>
-                  <h1 style={{ fontWeight: 'bold', fontSize: '32px' }}>Please login or register</h1>
-                  {isLogin ? renderLoginForm() : renderRegisterForm()}
+                  <p style={{ marginTop: '10px', fontSize: '18px' }}>Welcome! Please login or register.</p>
+                  {renderActiveForm()}
+                  {renderServerList()}
                   {renderUserList()}
                 </>
               )
             } />
             <Route path="/mqtt" element={
-              loggedIn ? <WebsocketClientPage onLogout={handleLogout} /> : <Navigate to="/" />
+              loggedIn ? toggling ? <MqttClientPage onLogout={handleLogout} onServers={registeredServers} /> :
+                                    <WebsocketClientPage onLogout={handleLogout} onServers={registeredServers} />
+              : <Navigate to="/" />
             } />
           </Routes>
         </div>
