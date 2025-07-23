@@ -5,9 +5,13 @@
 .header {
   display: flex;
   justify-content: space-between;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
   align-items: center;
   padding-left: 20px;
-  padding-right: 20px;;
+  padding-right: 20px;
   height: 55px; /* Set header height */
   background-color: red;
   color: white;
@@ -20,7 +24,8 @@
   flex-direction: column;
   align-items: center;
   /*justify-content: center;*/
-  padding-top: 20px; /* Add some top padding */
+  margin-top: 55px;
+  padding-top: 55px; /* Add some top padding */
   font-size: calc(10px + 2vmin);
   color: white;
 }
@@ -30,6 +35,7 @@
   left: 0;
   bottom: 0;
   width: 100%;
+  height: 55px; /* Set footer height */
   background-color: red;
   color: white;
   text-align: center;
@@ -64,39 +70,6 @@ ul {
 
 li {
   margin: 5px 0;
-}
-
-.greeting-page {
-  text-align: center;
-  padding: 20px;
-  background-color: #f0f0f0;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.greeting-page h2 {
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.greeting-page p {
-  color: #666;
-  margin-bottom: 20px;
-}
-
-.greeting-page button {
-  background-color: #f44336;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 16px;
-  margin: 4px 2px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.3s;
 }
 
 .logout-button {

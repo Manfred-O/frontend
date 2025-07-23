@@ -15,16 +15,36 @@ function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [toggling, setToggling] = useState(true);
-   const [image, setImage] = useState(true);
+  const [imageUrl, setImageUrl] = useState(null);
   const [activeForm, setActiveForm] = useState(''); // New state to track active form
 
   useEffect(() => {
     fetch('http://localhost:5000/api/hello')
-      .then(response => response.json())
-      .then(data => setMessage(data.message))
-      .catch(error => console.error('Error:', error));
-    fetchServers();
-    fetchUsers();
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        setMessage(data.message)
+        fetchServers();
+        fetchUsers();      
+      })
+      .catch(error => {
+        console.error('Error:', error)
+        setMessage('Server is down or not responding');
+      });
+  }, []);
+
+  useEffect(() => {
+    const getImage = async () => {
+      const response = await fetch('http://localhost:5000/api/image');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setImageUrl(url);
+    };
+    getImage();
   }, []);
 
   const fetchUsers = () => {
@@ -58,16 +78,14 @@ function App() {
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
+        return response.blob();
       })
-      .then(data => { 
-        console.log('Image fetched successfully');
-        setImage( data);
-        return data.blob();
-      }
-      )
-      .catch(error => {
-        console.error('Error fetching image:', error);
-      }); 
+      .then(blob => {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(blob);
+        document.body.appendChild(img);
+    })
+    .catch(error => console.error('Error fetching image:', error));
   };
 
   const handleLogin = (e) => {
@@ -111,6 +129,7 @@ function App() {
           setPassword('');
           fetchUsers();
           setIsLogin(true);
+          setActiveForm('login'); // Switch to login form after registration
         })
         .catch(error => {
           console.error('Error:', error);
@@ -130,7 +149,8 @@ function App() {
       default:
         return (
         <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <img src={getImage()} style={{ width: '200px', height: 'auto' }} />
+          <p style={{ marginTop: '10px', fontSize: '18px' }}>Welcome! Please login or register.</p>   
+          <img src={imageUrl} style={{ width: '300px', height: 'auto' }} />
         </div>
       );
     }
@@ -138,6 +158,7 @@ function App() {
 
   const renderLoginForm = () => (
     <div>
+      <p style={{ marginTop: '10px', fontSize: '18px' }}>Please login.</p> 
       <form onSubmit={handleLogin}>
         <input
           type="text"
@@ -157,27 +178,30 @@ function App() {
   );
 
   const renderRegisterForm = () => (
-    <form onSubmit={handleRegister}>
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button type="submit">Register</button>
-    </form>
+    <div>
+      <p style={{ marginTop: '10px', fontSize: '18px' }}>Please register.</p> 
+      <form onSubmit={handleRegister}>
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button type="submit">Register</button>
+      </form>
+    </div>
   );
 
   const renderServerList = () => (
@@ -227,23 +251,23 @@ function App() {
     <Router>
       <div className="App">
         <div className="header">
-          <h1 style={{ fontWeight: 'bold', fontSize: '24px' }}>{loggedIn ? `Welcome, ${username}` :  `${message}` }</h1>
+          <h1 style={{ fontWeight: 'bold', fontSize: '18px' }}>{loggedIn ? `Welcome, ${username}` :  `${message}` }</h1>
           {loggedIn ? (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingRight : '20px' }}>
               <button className="toggle-button" onClick={() => setToggling(!toggling)}>
-              <i class={`fa ${toggling ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: '24px', color: 'white'}}>
+              <i class={`fa ${toggling ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: '18px', color: 'white'}}>
               </i></button>
               <button className="logout-button" onClick={handleLogout}>
-              <i class="fa fa-sign-out" style={{ fontSize: '24px', color: 'white'}}>
+              <i class="fa fa-sign-out" style={{ fontSize: '18px', color: 'white'}}>
               </i></button>
             </div>
           ) : (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingRight: '20px' }}>
               <button className="register-button" onClick={() => setActiveForm('register')}>
-              <i class="fa fa-registered" style={{ fontSize: '24px', color: 'white'}}>
+              <i class="fa fa-registered" style={{ fontSize: '18px', color: 'white'}}>
               </i></button>
               <button className="login-button" onClick={() => setActiveForm('login')}>
-              <i class="fa fa-sign-in" style={{ fontSize: '24px', color: 'white'}}>
+              <i class="fa fa-sign-in" style={{ fontSize: '18px', color: 'white'}}>
               </i></button>
             </div>
           )}
@@ -253,7 +277,6 @@ function App() {
             <Route path="/" element={
               loggedIn ? <Navigate to="/mqtt" /> : (
                 <>
-                  <p style={{ marginTop: '10px', fontSize: '18px' }}>Welcome! Please login or register.</p>
                   {renderActiveForm()}
                   {renderServerList()}
                   {renderUserList()}

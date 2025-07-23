@@ -148,7 +148,7 @@ function MqttClientPage({ onLogout, onServers }) {
         
         {/* Right Area */}
         <div style={{ flex: 1, padding: '10px', display: 'flex', flexDirection: 'column' }}>
-          <h2 style={{ fontWeight: 'bold', fontSize: '24px', marginBottom: '20px' }}>MQTT Mqtt Client</h2>
+          <h2 style={{ fontWeight: 'bold', fontSize: '24px', marginBottom: '20px' }}>MQTT Client</h2>
           
           <div style={{ marginBottom: '20px', fontSize: '16px' }}>
             {registeredServers.map((option, index) => (
@@ -223,7 +223,7 @@ function MqttClientPage({ onLogout, onServers }) {
       </div>
 
       {/* Status message at the bottom center */}
-      <div style={{ fontSize: '16px', paddingBottom: '55px', textAlign: 'center'}}>
+      <div style={{backgroundColor: '#282c34', fontSize: '16px', paddingBottom: '55px', textAlign: 'center' }}>
         <p>Status: {MqttStatus}</p>
       </div>
 
