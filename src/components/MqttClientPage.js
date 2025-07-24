@@ -44,6 +44,15 @@ function MqttClientPage({ onLogout, onServers }) {
     }
   }, [selectedServer]);
 
+  useEffect(() => {
+    return () => {
+      console.log("MqttClientPage useEffect called");
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [socket]);
+
   const connectMqtt = () => {
     if (!selectedServer) {
       console.error("No server selected");
@@ -55,7 +64,7 @@ function MqttClientPage({ onLogout, onServers }) {
 
     const serverIndex = registeredServers.findIndex(server => server.name === selectedServer.name);
     
-    const socket = new WebSocket('ws://localhost:5000/api/mqtt');
+    const socket = new WebSocket('ws://localhost:5000/api/ws');
     setSocket(socket);
 
     socket.onopen = () => {
@@ -90,7 +99,7 @@ function MqttClientPage({ onLogout, onServers }) {
 
     socket.onclose = () => {
         console.log('Mqtt connection closed'); 
-        setMqttClient(false);
+        //setMqttClient(false);
         setMqttStatus('Disconnected');
         disconnectMqtt();
         disconnectMqttGlobal = null;
@@ -99,6 +108,7 @@ function MqttClientPage({ onLogout, onServers }) {
         onLogout();
         // Reset the publish message
         setPublishMessage('');
+        setSocket(null);
     };
  
   }
@@ -112,7 +122,7 @@ function MqttClientPage({ onLogout, onServers }) {
         // Send a message to the server
         socket.send(JSON.stringify({ route: 'disconnect' }));
         //socket.close();
-        setMqttClient(null);
+        setMqttClient(false);
     };
 
   const handlePublish = () => {
@@ -139,7 +149,7 @@ function MqttClientPage({ onLogout, onServers }) {
           <textarea
             readOnly
             value={receivedMessages.join('\n')}
-            style={{ width: '90%', height: '600px', alignSelf: 'center',  padding: '10px'}}
+            style={{ width: '90%', height: '400px', alignSelf: 'center',  padding: '10px'}}
             placeholder="Received messages will appear here"
           />
 
@@ -223,7 +233,7 @@ function MqttClientPage({ onLogout, onServers }) {
       </div>
 
       {/* Status message at the bottom center */}
-      <div style={{backgroundColor: '#282c34', fontSize: '16px', paddingBottom: '55px', textAlign: 'center' }}>
+      <div style={{backgroundColor: '#282c34', fontSize: '16px', height: '150px', paddingBottom: '55px', textAlign: 'center' }}>
         <p>Status: {MqttStatus}</p>
       </div>
 

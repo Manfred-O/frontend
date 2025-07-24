@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback  } from 'react';
 
 let disconnectWebsocketGlobal = null;
 
@@ -19,22 +19,24 @@ function formatDate(date) {
 }
 
 function WebsocketClientPage({ onLogout, onServers }) {
-  const [ipAddress, setIpAddress] = useState('192.168.0.16');
-  const [selectedValue, setSelectedValue] = useState('value1');
-  const [websocketClient, setWebsocketClient] = useState(null);
-  const [websocketStatus, setWebsocketStatus] = useState('Disconnected');
+  const [ipAddress, setIpAddress] = useState('localhost');
+  const [websocket, setWebsocket] = useState({client: false, status: 'Disconnected. Please connect.'});
   const [receivedMessages, setReceivedMessages] = useState([]);
   const [socket, setSocket] = useState(null);
   const [state, setState] = useState([false, false, false]);
-  const [port, setPort] = useState('8001');
+  const [port, setPort] = useState('5000');
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const maxReconnectAttempts = 3; // Maximum number of reconnect attempts
+  const reconnectInterval = 5000; // 5 seconds
 
-  const connectWebsocket = () => {
-    const socket = new WebSocket(`wss://${ipAddress}:${port}`);
-    setSocket(socket);
+  const connectWebsocket = useCallback (() => {
+    console.log("connectWebsocket called ", ipAddress, port, reconnectAttempts);
+    const socket = new WebSocket(`ws://${ipAddress}:${port}/api/ws`);
+    setSocket(socket);  
 
     socket.onopen = () => {
-      setWebsocketStatus('Connected');
-      setWebsocketClient(true);
+      setWebsocket({client: true, status: 'Connected'});
+      setReconnectAttempts(0);
     };
 
     socket.onmessage = (event) => {
@@ -42,123 +44,137 @@ function WebsocketClientPage({ onLogout, onServers }) {
       const currentDate = formatDate(new Date());
       const message = `${currentDate} - ${data.message || data.status}`;
       setReceivedMessages(prev => [...prev, message]);
+      setWebsocket({...websocket, status: 'incomming message...'});
     };
 
     socket.onerror = (event) => {
       console.log(`Error occurred: ${event}`);
-      setWebsocketStatus('Error');
+      setWebsocket({...websocket, status: "Error: " + event.message || "Unknown error"});
     };
 
     socket.onclose = () => {
-      setWebsocketClient(false);
-      setWebsocketStatus('Disconnected');
-      setReceivedMessages([]);
+      console.log('WebSocket connection closed');
+      setWebsocket({...websocket, client: false, status: 'Disconnected.'});
+      setSocket(null);
     };
-  }
 
-  const disconnectWebsocket = () => {
+  }, [ipAddress, port, reconnectAttempts]);
+
+  useEffect(() => {
+    return () => {
+      console.log("WebsocketClientPage useEffect called");
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [socket]);
+
+  const disconnectWebsocket = (e) => {
+    console.log("disconnectWebsocket called");
+
     if (socket) {
       socket.close();
-      setSocket(null);
+      //setSocket(null); 
+      //setReconnectAttempts(maxReconnectAttempts); // Prevent auto-reconnect on manual disconnect          
     }
   };
  
   const toggleBtn = (event) => {
-    const { id, checked } = event.target;
+    console.log("toggleBtn called");
+    const { id } = event.target;
     const newState = [...state];
     const sendData = {
       cmd: '',
       data: '',
       time: ''
     };
-    
-    console.log("toggleBtn called");
+
     console.log("Button ID:", id);
 
     if(id === "red-btn")
     {      
-      console.log("newState[0]:", newState[0]);     
-      if((checked == true) && (newState[0] !== true))
+      if(newState[0] === false)
       {
         console.log("red checked");
         newState[0] = true;
         sendData.cmd = '11';
-        sendData.data = 'Red on';
+        sendData.data = 'Red on';  
         sendData.time = '101';
-      }
-      else
-      {
+      } else {
         console.log("red unchecked");
         newState[0] = false;
         sendData.cmd = '12';
         sendData.data = 'Red off';  
         sendData.time = '101';
-      }  
+      }
     }
       
     if(id === "green-btn")
     {
-        console.log("newState[1]:", newState[1]);
-      if((checked == true) && (newState[1] !== true))
+      if(newState[1] === false)
       {
-        console.log("green checked");
-        newState[1] = true;
-        sendData.cmd = '31';
-        sendData.data = 'Green on';
-        sendData.time = '101';
+          console.log("green checked");
+          newState[1] = true;
+          sendData.cmd = '31';
+          sendData.data = 'Green on';
+          sendData.time = '101';    
+      } else {
+          console.log("green unchecked");
+          newState[1] = false;
+          sendData.cmd = '32';
+          sendData.data = 'Green off';
+          sendData.time = '101';
+
       }
-      else
-      {        
-        console.log("green unchecked");
-        newState[1] = false;
-        sendData.cmd = '32';
-        sendData.data = 'Green off';
-        sendData.time = '101';
-      }     
     }
-       
+     
     if(id === "blue-btn")
     {
-        console.log("newState[2]:", newState[2]);
-      if((checked == true) && (newState[2] !== true))
+      if(newState[2] === false)
       {
         console.log("blue checked");
         newState[2] = true;
         sendData.cmd = '21';
         sendData.data = 'Blue on';
         sendData.time = '101';
-      }
-      else
-      {
+      } else {
         console.log("blue unchecked");
         newState[2] = false;
         sendData.cmd = '22';
         sendData.data = 'Blue off';
         sendData.time = '101';
-      } 
-        
+      }
     }
-    
+
+
+         
     // Update the state with the new values
     setState(newState);
 
     if (socket && socket.readyState === WebSocket.OPEN) {
+      console.log("Sending data:", sendData);
       socket.send(JSON.stringify(sendData));
     }
 
+    const web = {...websocket};
+    const reconnect = reconnectAttempts;
+
+    console.log('connection state', web.client, web.status , reconnect);
+
   }
 
-
+/*
   const sendValue = () => {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ route: 'publish', message: selectedValue }));
     }
   };
+*/
 
   disconnectWebsocketGlobal = disconnectWebsocket;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', padding: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', padding: '0px 20px' }}>
       <div style={{ display: 'flex', flex: 1 }}>
         
         {/* Left Area */}
@@ -168,7 +184,7 @@ function WebsocketClientPage({ onLogout, onServers }) {
           <textarea
             readOnly
             value={receivedMessages.join('\n')}
-            style={{ width: '90%', height: '600px', alignSelf: 'center',  padding: '10px'}}
+            style={{ width: '90%', height: '400px', alignSelf: 'center',  padding: '10px'}}
             placeholder="Received messages will appear here"
           />
 
@@ -185,7 +201,7 @@ function WebsocketClientPage({ onLogout, onServers }) {
                 value={ipAddress}
                 onChange={(e) => setIpAddress(e.target.value)}
                 placeholder="Enter WebSocket IP address"
-                style={{flex: 1, width: '100%', padding: '10px', minWidth: '100px' }}
+                style={{flex: 1, padding: '10px', minWidth: '100px', maxWidth: '200px' }}
               />
               <label for="ipAddress" style={{alignContent: 'center', fontSize: '16px' }}>IP Address</label>
             
@@ -195,7 +211,7 @@ function WebsocketClientPage({ onLogout, onServers }) {
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
                 placeholder="Enter WebSocket Port"
-                style={{flex: 1,  width: '100%', padding: '10px', minWidth: '100px' }}
+                style={{flex: 1, padding: '10px', minWidth: '100px', maxWidth: '200px' }}
               />   
               <label for="port" style={{alignContent: 'center', fontSize: '16px' }}>Port</label>          
           </div>
@@ -203,14 +219,14 @@ function WebsocketClientPage({ onLogout, onServers }) {
           <div style={{display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px'}}>
             <button 
               onClick={connectWebsocket} 
-              disabled={websocketClient}
+              disabled={websocket.client}
               style={{ flex: 1, height: "40px", minWidth: '100px', maxWidth: '200px' }}
             >
               Connect
             </button>
             <button 
-              onClick={disconnectWebsocket} 
-              disabled={!websocketClient}
+              onClick={(e) => disconnectWebsocket(e)} 
+              disabled={!websocket.client}
               style={{ flex: 1, height: "40px", minWidth: '100px', maxWidth: '200px' }}
             >
               Disconnect
@@ -251,6 +267,7 @@ function WebsocketClientPage({ onLogout, onServers }) {
             </label>
           </div>
 
+          {/* Send Value Button 
           <div style={{ marginBottom: '20px' }}>
             <button
               onClick={sendValue}
@@ -259,21 +276,23 @@ function WebsocketClientPage({ onLogout, onServers }) {
             >
               Send Value
             </button>
-          </div>
+          </div>*/}
+
         </div>
       </div>
 
-      <div style={{ marginTop: '20px', fontSize: '16px', textAlign: 'center'}}>
-        <p>Status: {websocketStatus}</p>
+      <div style={{ marginBottom: '55px', fontSize: '16px', height: '150px', textAlign: 'center'}}>
+        <p>Status: {websocket.status}</p>
       </div>
+
     </div>
   );
 }
 
-export function triggerWebsocketDisconnect() {
+function triggerWebsocketDisconnect() {
   if (disconnectWebsocketGlobal) {
     disconnectWebsocketGlobal();
   }
 }
 
-export { WebsocketClientPage };
+export { WebsocketClientPage, triggerWebsocketDisconnect };

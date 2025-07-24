@@ -19,7 +19,7 @@ function App() {
   const [activeForm, setActiveForm] = useState(''); // New state to track active form
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/hello')
+    fetch('http://localhost:5000/api/http/hello')
       .then(response => {
         if (!response.ok) {
           throw new Error('Network response was not ok');
@@ -39,7 +39,10 @@ function App() {
 
   useEffect(() => {
     const getImage = async () => {
-      const response = await fetch('http://localhost:5000/api/image');
+      const response = await fetch('http://localhost:5000/api/http/image?' + new URLSearchParams({
+         image: 'istockphoto-2167092274-1024x1024.jpg',
+         }).toString());
+      
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       setImageUrl(url);
@@ -49,7 +52,7 @@ function App() {
 
   const fetchUsers = () => {
     setIsLoading(true);
-    fetch('http://localhost:5000/api/users')
+    fetch('http://localhost:5000/api/http/users')
       .then(response => response.json())
       .then(data => {
         setRegisteredUsers(data);
@@ -62,7 +65,7 @@ function App() {
   };
 
   const fetchServers = () => {
-    fetch('http://localhost:5000/api/servers')
+    fetch('http://localhost:5000/api/http/servers')
       .then(response => response.json())
       .then(data => {
         setRegisteredServers(data);
@@ -72,25 +75,10 @@ function App() {
       });
   };
 
-  const getImage = () => {
-    fetch('http://localhost:5000/api/image')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.blob();
-      })
-      .then(blob => {
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(blob);
-        document.body.appendChild(img);
-    })
-    .catch(error => console.error('Error fetching image:', error));
-  };
 
   const handleLogin = (e) => {
     e.preventDefault();
-    fetch('http://localhost:5000/api/login', {
+    fetch('http://localhost:5000/api/http/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -114,7 +102,7 @@ function App() {
   const handleRegister = (e) => {
     e.preventDefault();
     if (username && email && password) {
-      fetch('http://localhost:5000/api/register', {
+      fetch('http://localhost:5000/api/http/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -239,8 +227,9 @@ function App() {
   );
 
   const handleLogout = () => {
-    triggerMqttDisconnect(); // This will disconnect Mqtt if connected
-    triggerWebsocketDisconnect(); // This will disconnect Websocket if connected
+    console.log('Logging out...');
+    //triggerMqttDisconnect(); // This will disconnect Mqtt if connected
+    //triggerWebsocketDisconnect(); // This will disconnect Websocket if connected
     setLoggedIn(false);
     setUsername('');
     setEmail('');

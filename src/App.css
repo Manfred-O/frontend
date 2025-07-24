@@ -24,8 +24,7 @@
   flex-direction: column;
   align-items: center;
   /*justify-content: center;*/
-  margin-top: 55px;
-  padding-top: 55px; /* Add some top padding */
+  margin-top: 55px; /* Add some top margin */
   font-size: calc(10px + 2vmin);
   color: white;
 }
