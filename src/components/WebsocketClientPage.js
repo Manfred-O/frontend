@@ -174,7 +174,7 @@ function WebsocketClientPage({ onLogout, onServers }) {
   disconnectWebsocketGlobal = disconnectWebsocket;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', padding: '0px 20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'auto', width: '100%', padding: '0px 20px' }}>
       <div style={{ display: 'flex', flex: 1 }}>
         
         {/* Left Area */}

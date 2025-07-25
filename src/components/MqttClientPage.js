@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+const reconnectInterval = 5000;
+const reconnectMaxAttempts = 5;
 
 let disconnectMqttGlobal = null;
 
@@ -23,7 +26,10 @@ function MqttClientPage({ onLogout, onServers }) {
   const [publishMessage, setPublishMessage] = useState('');
   const [receivedMessages, setReceivedMessages] = useState([]);
   const [socket, setSocket] = useState(null);
-  const [inputUsed, setInputUsed] = useState(false);  
+  const [inputUsed, setInputUsed] = useState(false);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);    
+ 
+  const mqttClientRef = useRef(null);
 
   useEffect(() => {
     // Set registered servers when the component mounts
@@ -45,12 +51,62 @@ function MqttClientPage({ onLogout, onServers }) {
   }, [selectedServer]);
 
   useEffect(() => {
+    console.log("mqttClientPage useEffect reconnectAttempts", reconnectAttempts);
+    if(!mqttClientRef.current) {
+      return; // Early exit if mqttClientRef.current is null
+    }
+
+    if (reconnectAttempts < reconnectMaxAttempts)
+    {
+      console.log("Reconnecting to MQTT");
+      connectMqtt();
+    }
+    else {
+      console.log("Maximum reconnect attempts reached. Logout...");
+      setSocket(null);
+      onLogout();
+      }
+  }, [reconnectAttempts]);
+
+  useEffect(() => {
+    console.log("MqttClientPage useEffect");
+
+    if (!socket) {
+      return; // Early exit if socket is null
+    }
+
+    socket.onclose = () => {
+      
+      console.log('Connection closed', (mqttClientRef.current === null ) ? 'intentionally' : 'unexpectedly');
+              
+      setMqttStatus('Disconnected');
+      setReceivedMessages([]);
+      setPublishMessage('');
+      setMqttClient(false);
+      //setSocket(null);
+      disconnectMqttGlobal = null;
+
+      // Try to reconnect after a short delay    
+      if(mqttClientRef.current) {
+        mqttClientRef.current = null;  
+
+        setTimeout(() => {
+            console.log("Reconnecting to MQTT");
+            connectMqtt();
+        }, reconnectInterval);
+      };      
+  
+    };
+
     return () => {
-      console.log("MqttClientPage useEffect called");
+      // Clean up the socket connection when the component unmounts
       if (socket) {
+        console.log("MqttClientPage useEffect cleanup");
+        mqttClientRef.current = null;  
         socket.close();
       }
     };
+
   }, [socket]);
 
   const connectMqtt = () => {
@@ -65,6 +121,7 @@ function MqttClientPage({ onLogout, onServers }) {
     const serverIndex = registeredServers.findIndex(server => server.name === selectedServer.name);
     
     const socket = new WebSocket('ws://localhost:5000/api/ws');
+    mqttClientRef.current = socket;
     setSocket(socket);
 
     socket.onopen = () => {
@@ -94,36 +151,20 @@ function MqttClientPage({ onLogout, onServers }) {
 
     // Handle errors
     socket.onerror = (event) => {
-        console.log(`Error occurred: ${event}`);
+        console.log(`Error occurred: ${event.message}`);
+        setReconnectAttempts(prev => prev + 1);   
     };
 
-    socket.onclose = () => {
-        console.log('Mqtt connection closed'); 
-        //setMqttClient(false);
-        setMqttStatus('Disconnected');
-        disconnectMqtt();
-        disconnectMqttGlobal = null;
-        setReceivedMessages([]);
-        setPublishMessage('');
-        onLogout();
-        // Reset the publish message
-        setPublishMessage('');
-        setSocket(null);
-    };
- 
   }
-
-    const disconnectMqtt = () => {
-        if (!MqttClient) {
-            console.warn('No Mqtt client to disconnect');
-            return;
-        }
-
-        // Send a message to the server
-        socket.send(JSON.stringify({ route: 'disconnect' }));
-        //socket.close();
-        setMqttClient(false);
-    };
+  
+  const disconnectMqtt = () => {
+    console.log("disconnectMqtt called");
+    mqttClientRef.current = true;  // Set the flag to true to indicate intentional close
+    // Send a message to the server
+    socket.send(JSON.stringify({ route: 'disconnect' }));
+    //socket.close();
+    setSocket(null);
+  };
 
   const handlePublish = () => {
     console.log(`Publishing message: ${publishMessage}`);
@@ -139,7 +180,7 @@ function MqttClientPage({ onLogout, onServers }) {
   disconnectMqttGlobal = disconnectMqtt;  
 
   return (
-    <div className="mqtt-client-page" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%' }}>
+    <div className="mqtt-client-page" style={{ display: 'flex', flexDirection: 'column', height: 'auto', width: '100%' }}>
       <div style={{ display: 'flex', flex: 1 }}>
 
         {/* Left Area */}
@@ -149,7 +190,7 @@ function MqttClientPage({ onLogout, onServers }) {
           <textarea
             readOnly
             value={receivedMessages.join('\n')}
-            style={{ width: '90%', height: '400px', alignSelf: 'center',  padding: '10px'}}
+            style={{ width: '90%', height: '50vh', alignSelf: 'center',  padding: '10px'}}
             placeholder="Received messages will appear here"
           />
 
@@ -224,7 +265,7 @@ function MqttClientPage({ onLogout, onServers }) {
             <button 
               onClick={handlePublish}
               disabled={!MqttClient}
-              style={{ width: '80px', height: "40px" }}
+              style={{ width: '80px', height: "40px", padding: '10px' }}
             >
               Send
             </button>
@@ -233,7 +274,7 @@ function MqttClientPage({ onLogout, onServers }) {
       </div>
 
       {/* Status message at the bottom center */}
-      <div style={{backgroundColor: '#282c34', fontSize: '16px', height: '150px', paddingBottom: '55px', textAlign: 'center' }}>
+      <div style={{ /*backgroundColor: '#282c34',*/ fontSize: '16px', height: '150px', paddingBottom: '55px', textAlign: 'center' }}>
         <p>Status: {MqttStatus}</p>
       </div>
 
@@ -242,10 +283,10 @@ function MqttClientPage({ onLogout, onServers }) {
 }
 
 // Export a function that can be called from outside to trigger disconnect
-export function triggerMqttDisconnect() {
+function triggerMqttDisconnect() {
   if (disconnectMqttGlobal) {
     disconnectMqttGlobal();
   }
 }
 
-export { MqttClientPage };
+export { MqttClientPage , triggerMqttDisconnect };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate  } from 'react-router-dom';
 import './App.css';
-import {MqttClientPage, triggerMqttDisconnect   } from './components/MqttClientPage';
+import {MqttClientPage, triggerMqttDisconnect  } from './components/MqttClientPage';
 import {WebsocketClientPage, triggerWebsocketDisconnect } from './components/WebsocketClientPage';
 
 function App() {
@@ -136,17 +136,17 @@ function App() {
         return renderRegisterForm();
       default:
         return (
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <p style={{ marginTop: '10px', fontSize: '18px' }}>Welcome! Please login or register.</p>   
-          <img src={imageUrl} style={{ width: '300px', height: 'auto' }} />
+        <div style={{ textAlign: 'center', marginTop: '30px' }}>
+          <p style={{ padding: '20px', fontSize: '18px' }}>Welcome! Please login or register.</p>   
+          <img src={imageUrl} style={{ width: '25vw', /*width: '300px',*/ height: 'auto' }} />
         </div>
       );
     }
   };
 
   const renderLoginForm = () => (
-    <div>
-      <p style={{ marginTop: '10px', fontSize: '18px' }}>Please login.</p> 
+    <div style={{ textAlign: 'center', marginTop: '30px' }}>
+      <p style={{ padding: '20px', fontSize: '18px' }}>Please login.</p> 
       <form onSubmit={handleLogin}>
         <input
           type="text"
@@ -166,8 +166,8 @@ function App() {
   );
 
   const renderRegisterForm = () => (
-    <div>
-      <p style={{ marginTop: '10px', fontSize: '18px' }}>Please register.</p> 
+    <div style={{ textAlign: 'center', marginTop: '30px' }}>
+      <p style={{ padding: '20px', fontSize: '18px' }}>Please register.</p> 
       <form onSubmit={handleRegister}>
         <input
           type="text"
