@@ -1,10 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef} from 'react';
 
 const reconnectInterval = 5000;
 const reconnectMaxAttempts = 5;
+const MAX_SPREADS = 30; // Maximum number of spreads
 
 let disconnectMqttGlobal = null;
 
+/**
+ * Format a Date object into a string in the format of MM/DD/YYYY HH:MM:SS
+ * @param {Date} date The Date object to be formatted
+ * @returns {string} A string in the format of MM/DD/YYYY HH:MM:SS
+ */
 function formatDate(date) {
   return date.toLocaleString('en-US', {
     year: 'numeric',
@@ -17,6 +23,16 @@ function formatDate(date) {
   });
 }
 
+/**
+ * The MqttClientPage component displays a MQTT client interface where users can connect to a MQTT server, select a topic, send a message, and receive messages.
+ * The component is also responsible for handling the socket connection and reconnecting to the server if the connection is lost.
+ * The component also displays a list of received messages and a status message at the bottom center of the page.
+ * The component also has a logout button that disconnects the MQTT client and logs out the user.
+ * @param {object} props - The component's props
+ * @param {array} props.onServers - An array of registered MQTT servers
+ * @param {function} props.onLogout - A function to call when the user logs out
+ * @returns {ReactElement} - The component's JSX element
+ */
 function MqttClientPage({ onLogout, onServers }) {
   const [registeredServers, setRegisteredServers] = useState([]);
   const [selectedServer, setSelectedServer] = useState(null);
@@ -51,6 +67,11 @@ function MqttClientPage({ onLogout, onServers }) {
   }, [selectedServer]);
 
   useEffect(() => {
+    console.log(receivedMessages.length);
+  }, [receivedMessages]);
+
+  {/* Reconnect logic 
+  useEffect(() => {
     console.log("mqttClientPage useEffect reconnectAttempts", reconnectAttempts);
     if(!mqttClientRef.current) {
       return; // Early exit if mqttClientRef.current is null
@@ -66,7 +87,7 @@ function MqttClientPage({ onLogout, onServers }) {
       setSocket(null);
       onLogout();
       }
-  }, [reconnectAttempts]);
+  }, [reconnectAttempts]);*/}
 
   useEffect(() => {
     console.log("MqttClientPage useEffect");
@@ -75,6 +96,12 @@ function MqttClientPage({ onLogout, onServers }) {
       return; // Early exit if socket is null
     }
 
+    /**
+     * Event handler for when the MQTT connection is closed. If the
+     * connection was closed intentionally, mqttClientRef.current is
+     * null. If not, the connection was closed unexpectedly and we
+     * should try to reconnect after a short delay.
+     */
     socket.onclose = () => {
       
       console.log('Connection closed', (mqttClientRef.current === null ) ? 'intentionally' : 'unexpectedly');
@@ -83,10 +110,10 @@ function MqttClientPage({ onLogout, onServers }) {
       setReceivedMessages([]);
       setPublishMessage('');
       setMqttClient(false);
-      //setSocket(null);
+      setReconnectAttempts(0);  
       disconnectMqttGlobal = null;
 
-      // Try to reconnect after a short delay    
+      {/* Try to reconnect after a short delay    
       if(mqttClientRef.current) {
         mqttClientRef.current = null;  
 
@@ -94,7 +121,7 @@ function MqttClientPage({ onLogout, onServers }) {
             console.log("Reconnecting to MQTT");
             connectMqtt();
         }, reconnectInterval);
-      };      
+      };*/}      
   
     };
 
@@ -109,6 +136,12 @@ function MqttClientPage({ onLogout, onServers }) {
 
   }, [socket]);
 
+  /**
+   * Connects to the MQTT server with the selected server and sets up the WebSocket
+   * connection to the server. Sends a message with a route identifier to the server
+   * to initiate the connection. Handles incoming messages and errors from the server.
+   * @returns {void}
+   */
   const connectMqtt = () => {
     if (!selectedServer) {
       console.error("No server selected");
@@ -117,13 +150,16 @@ function MqttClientPage({ onLogout, onServers }) {
 
     setRegisteredServers(onServers || []); 
     console.log("Registered servers:", registeredServers); 
-
     const serverIndex = registeredServers.findIndex(server => server.name === selectedServer.name);
-    
     const socket = new WebSocket('ws://localhost:5000/api/ws');
     mqttClientRef.current = socket;
     setSocket(socket);
 
+/**
+ * Event handler for when the WebSocket connection is opened.
+ * Sends a message to the server with a route identifier and the index
+ * of the selected MQTT server to initiate the connection.
+ */
     socket.onopen = () => {
         // Send a message with a route identifier
         socket.send(JSON.stringify({
@@ -143,7 +179,8 @@ function MqttClientPage({ onLogout, onServers }) {
         if(data.topic !== undefined && data.message) {
           const currentDate = formatDate(new Date());
           const message = `${currentDate} - ${data.topic} - ${data.message}`;
-          setReceivedMessages(prev => [...prev, message]);
+          addMessage(message);
+          //setReceivedMessages(prev => [...prev, message]);
         }
         setMqttStatus(data.status || 'received');
         setMqttClient(true);
@@ -157,6 +194,29 @@ function MqttClientPage({ onLogout, onServers }) {
 
   }
   
+/**
+ * Adds a new message to the list of received messages.
+ * If the number of received messages exceeds the maximum allowed,
+ * it removes the oldest message to maintain the limit.
+ *
+ * @param {string} message - The message to be added to the list.
+ */
+  const addMessage = (message) => {
+    setReceivedMessages((prevMessages) => {
+      if (prevMessages.length >= MAX_SPREADS) {
+        return [...prevMessages.slice(1), message];
+      } else {
+        return [...prevMessages, message];
+      }
+    });
+  }
+
+/**
+ * Disconnects from the MQTT server.
+ * This function sends a disconnect message to the server and sets the
+ * WebSocket connection to null. It also sets a flag to indicate that
+ * the disconnection was intentional.
+ */
   const disconnectMqtt = () => {
     console.log("disconnectMqtt called");
     mqttClientRef.current = true;  // Set the flag to true to indicate intentional close
@@ -166,6 +226,13 @@ function MqttClientPage({ onLogout, onServers }) {
     setSocket(null);
   };
 
+/**
+ * Publishes a message to the MQTT server.
+ * This function sends a message to the MQTT server with the specified topic and message.
+ * If the socket is not connected, or the topic or message is empty, it does nothing.
+ *
+ * @function
+ */
   const handlePublish = () => {
     console.log(`Publishing message: ${publishMessage}`);
     if (socket && publishMessage && topicServer) {
