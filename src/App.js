@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate  } from 'react-router-
 import './App.css';
 import {MqttClientPage, triggerMqttDisconnect  } from './components/MqttClientPage';
 import {WebsocketClientPage, triggerWebsocketDisconnect } from './components/WebsocketClientPage';
+import GreetingsPage from './components/GreetingsPage';
 
 function App() {
   const [message, setMessage] = useState('');
@@ -17,6 +18,7 @@ function App() {
   const [toggling, setToggling] = useState(true);
   const [imageUrl, setImageUrl] = useState(null);
   const [activeForm, setActiveForm] = useState(''); // New state to track active form
+  const [token, setToken] = useState(null);
 
   useEffect(() => {
     fetch('http://localhost:5000/api/http/hello')
@@ -28,8 +30,8 @@ function App() {
       })
       .then(data => {
         setMessage(data.message)
-        fetchServers();
-        fetchUsers();      
+        //fetchServers();
+        //fetchUsers();      
       })
       .catch(error => {
         console.error('Error:', error)
@@ -50,31 +52,43 @@ function App() {
     getImage();
   }, []);
 
+  useEffect(() => {
+    console.log('Token:', token);
+  },[token]);
+
+  
   const fetchUsers = () => {
-    setIsLoading(true);
+    //setIsLoading(true);
+    return new Promise((resolve, reject) => {
     fetch('http://localhost:5000/api/http/users')
       .then(response => response.json())
       .then(data => {
         setRegisteredUsers(data);
-        setIsLoading(false);
+        //setIsLoading(false);
+        resolve(data);
       })
       .catch(error => {
         console.error('Error fetching users:', error);
-        setIsLoading(false);
+        //setIsLoading(false);
+        reject([]);
       });
+    });
   };
 
+  // In App.js or wherever onFetchServers is defined
   const fetchServers = () => {
-    fetch('http://localhost:5000/api/http/servers')
-      .then(response => response.json())
-      .then(data => {
-        setRegisteredServers(data);
-      })
-      .catch(error => {
-        console.error('Error fetching servers:', error);
-      });
+    return new Promise((resolve, reject) => {
+      fetch('http://localhost:5000/api/http/servers')
+        .then(response => response.json())
+        .then(data => {
+          resolve(data);
+        })
+        .catch(error => {
+          console.error('Error fetching servers:', error);
+          reject(error);
+        });
+    });
   };
-
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -88,14 +102,43 @@ function App() {
       .then(response => response.json())
       .then(data => {
         if (data.message === 'Login successful') {
+          setToken(data.token);
           setLoggedIn(true);
         } else {
           alert('Invalid credentials. Please try again.');
         }
       })
       .catch(error => {
+        setToken([]);
         console.error('Error:', error);
         alert('Login failed. Please try again.');
+      });
+  };
+
+  const handleLogout = () => {
+    console.log('Logging out...');
+    fetch('http://localhost:5000/api/http/logout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token, username }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        if(data.message === 'Logout successful') {
+          setToken(null);
+          setLoggedIn(false);
+          setUsername('');
+          setEmail('');
+          setPassword('');          
+        } else {
+          alert(data.error);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('logging out failed. Please try again.');
       });
   };
 
@@ -111,15 +154,20 @@ function App() {
       })
         .then(response => response.json())
         .then(data => {
-          alert(data.message);
-          setUsername('');
-          setEmail('');
-          setPassword('');
-          fetchUsers();
-          setIsLogin(true);
-          setActiveForm('login'); // Switch to login form after registration
+          if(data.message === 'User registered successfully') {
+            setToken(data.token);
+            setUsername('');
+            setEmail('');
+            setPassword('');
+            //fetchUsers();
+            setIsLogin(true);
+            setActiveForm('login'); // Switch to login form after registration
+          } else {
+            alert(data.error);
+          }
         })
         .catch(error => {
+          setToken([]);
           console.error('Error:', error);
           alert('Registration failed. Please try again.');
         });
@@ -226,16 +274,6 @@ function App() {
     </div>
   );
 
-  const handleLogout = () => {
-    console.log('Logging out...');
-    //triggerMqttDisconnect(); // This will disconnect Mqtt if connected
-    //triggerWebsocketDisconnect(); // This will disconnect Websocket if connected
-    setLoggedIn(false);
-    setUsername('');
-    setEmail('');
-    setPassword('');
-  };
-
   return (
     <Router>
       <div className="App">
@@ -264,13 +302,16 @@ function App() {
         <div className="main">
           <Routes>
             <Route path="/" element={
-              loggedIn ? <Navigate to="/mqtt" /> : (
+              loggedIn ? <Navigate to="/greetings" /> : (
                 <>
                   {renderActiveForm()}
-                  {renderServerList()}
-                  {renderUserList()}
+                  {/*{renderServerList()}
+                  {renderUserList()}*/}
                 </>
               )
+            } />
+            <Route path="/greetings" element={
+              loggedIn ? <GreetingsPage onFetchServers={fetchServers} onFetchUsers={fetchUsers} /> : <Navigate to="/" />
             } />
             <Route path="/mqtt" element={
               loggedIn ? toggling ? <MqttClientPage onLogout={handleLogout} onServers={registeredServers} /> :
