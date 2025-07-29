@@ -65,14 +65,32 @@ function WebsocketClientPage({ onLogout, onServers }) {
   
   const connectWebsocket = useCallback (() => {
     console.log("connectWebsocket called ", ipAddress, port, reconnectAttempts);
-    const socket = new WebSocket(`wss://${ipAddress}:${port}`);
-    //const socket = new WebSocket(`ws://${ipAddress}:${port}/api/ws`);
+    //const socket = new WebSocket(`wss://${ipAddress}:${port}`);
+    const socket = new WebSocket(`ws://${ipAddress}:${port}/api/ws`);
     setSocket(socket);  
 
     // Event listener for WebSocket connection open
     // When the connection is open, set the connection status to 'Connected'
     // and reset the reconnect attempts counter.
-    socket.onopen = () => {
+    socket.onopen = (event) => {
+      console.log('WebSocket connection opened');
+
+      socket.onmessage = (event) => {
+        console.log('Received message:', event.data);
+        if (event.data instanceof ArrayBuffer) {
+          const responseHeaders = new Uint8Array(event.data);
+          const headerString = String.fromCharCode.apply(null, responseHeaders);
+          const headers = headerString.split('\r\n');
+
+          // Extract the Sec-WebSocket-Accept header
+          const secWebSocketAccept = headers.find((header) => header.startsWith('Sec-WebSocket-Accept: '));
+          if (secWebSocketAccept) {
+            const acceptValue = secWebSocketAccept.split(': ')[1];
+            console.log(acceptValue);
+          }
+        }
+      };
+
       setWebsocket({client: true, status: 'Connected'});
       setReconnectAttempts(0);
     };
@@ -83,6 +101,7 @@ function WebsocketClientPage({ onLogout, onServers }) {
     // is then added to the received messages array and the connection status
     // is updated to indicate that an incoming message was received.
     socket.onmessage = (event) => {
+      console.log('Received message');
       const data = JSON.parse(event.data);
       const currentDate = formatDate(new Date());
       const message = `${currentDate} - ${data.message || data.status}`;

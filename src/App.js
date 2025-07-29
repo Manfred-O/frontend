@@ -311,7 +311,11 @@ function App() {
               )
             } />
             <Route path="/greetings" element={
-              loggedIn ? <GreetingsPage onFetchServers={fetchServers} onFetchUsers={fetchUsers} /> : <Navigate to="/" />
+              loggedIn ? 
+                  toggling ? 
+                  <GreetingsPage onFetchServers={fetchServers} onFetchUsers={fetchUsers} /> :
+                  <Navigate to="/mqtt" />
+              : <Navigate to="/" />
             } />
             <Route path="/mqtt" element={
               loggedIn ? toggling ? <MqttClientPage onLogout={handleLogout} onServers={registeredServers} /> :
